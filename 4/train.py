@@ -17,7 +17,6 @@ def train_model():
         X, y, test_size=0.2, random_state=42
     )
     
-
     model = RandomForestRegressor(
         n_estimators=100,
         max_depth=12,
@@ -27,16 +26,18 @@ def train_model():
     )
     model.fit(X_train, y_train)
     
-
     y_pred = model.predict(X_test)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
     
     os.makedirs('models', exist_ok=True)
-    joblib.dump(model, 'models/diamonds_model.pkl')
     
-
+    # Сохраняем модель как pkl файл
+    model_path_pkl = 'models/diamonds_model.pkl'
+    joblib.dump(model, model_path_pkl)
+    
+    # Сохраняем в MLflow
     mlflow.set_tracking_uri("file:./mlruns")
     with mlflow.start_run(run_name="random_forest_diamonds"):
         mlflow.log_param("n_estimators", 100)
@@ -44,28 +45,26 @@ def train_model():
         mlflow.log_metric("rmse", rmse)
         mlflow.log_metric("mae", mae)
         mlflow.log_metric("r2", r2)
-        mlflow.sklearn.log_model(model, "diamonds_model")
         
-        # Сохраняем модель
+        # Логируем модель
         mlflow.sklearn.log_model(
             sk_model=model,
             artifact_path="diamonds_model"
         )
         
-        # Получаем URI модели
+        # Получаем URI модели MLflow
         run_id = mlflow.active_run().info.run_id
         model_uri = f"runs:/{run_id}/diamonds_model"
         
-        # Сохраняем URI в файл
+        # Сохраняем ОБА пути в разные файлы
+        with open('best_model.txt', 'w') as f:
+            f.write(model_path_pkl)  # Для простого запуска без MLflow
+        
         with open('model_uri.txt', 'w') as f:
-            f.write(model_uri)
-
- 
-    model_path = 'models/diamonds_model.pkl'
-
-    print(model_path)
-
-    return model
+            f.write(model_uri)  # Для MLflow serve
+        
+        print(f"Model saved to: {model_path_pkl}")
+        print(f"MLflow URI: {model_uri}")
 
 if __name__ == "__main__":
     train_model()
